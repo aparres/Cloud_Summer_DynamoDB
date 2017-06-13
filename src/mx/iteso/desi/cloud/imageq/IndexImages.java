@@ -23,15 +23,48 @@ public class IndexImages {
             Triple triple;
      
             //Start Parcing Images File
+            int counter = 0;
             ParseTriples imagesParser = new ParseTriples(imageFileName);
-
-            //Code to add images to imageStore
+            Map<String, String> imagesEntries = new HashMap<>();
+            while((triple = imagesParser.getNextTriple())!=null) {
+                if(!triple.getPredicate().equals("http://xmlns.com/foaf/0.1/depiction")) {
+                    continue;
+                }
+                if(!Config.filter.isEmpty()) {
+                    if(!triple.getSubject().substring(triple.getSubject().lastIndexOf("/")+1).startsWith(Config.filter)) {
+                        continue;
+                    }
+                }
+                
+                imagesEntries.put(triple.getSubject(), triple.getObject());
+                counter++;
+            }
+            
+            imageStore.put(imagesEntries);
+            System.out.println(counter+" images added to store");
             
             
             //Start Parcing Labels File
+            counter=0;
             ParseTriples termsParser = new ParseTriples(titleFileName);
-            //Code to add images to titleStore
-
+            Map<String, String> termsEntries = new HashMap<>();
+            while((triple = termsParser.getNextTriple())!=null) {
+                if(!triple.getPredicate().equals("http://www.w3.org/2000/01/rdf-schema#label")) {
+                    continue;
+                }
+                if(!imagesEntries.containsKey(triple.getSubject())) {
+                    continue;
+                }
+                
+                for(String word : triple.getObject().split(" ")) {
+                    String steam = PorterStemmer.stem(word);
+                    String term = steam.equals("Invalid term") ? word : steam;
+                    termsEntries.put(term.toLowerCase(), triple.getSubject());
+                    counter++;
+                }
+            }
+            titleStore.put(termsEntries);
+            System.out.println(counter+" terms added to store");            
             this.close();
   }
   
